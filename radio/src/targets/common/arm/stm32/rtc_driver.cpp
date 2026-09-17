@@ -58,10 +58,14 @@ uint16_t rtcGetTimeMs(struct gtm * t)
   t->tm_mon  = RTC_DateStruct.Month - 1;
   t->tm_mday = RTC_DateStruct.Date;
 
+#if defined(RTC_SSR_SS)
   // SSR counts down over PREDIV_S+1 steps, 1/256 s each with the usual setup
   uint32_t fraction = RTC_TimeStruct.SecondFraction;
   if (fraction == 0 || RTC_TimeStruct.SubSeconds > fraction) return 0;
   return (uint16_t)(((fraction - RTC_TimeStruct.SubSeconds) * 1000) / (fraction + 1));
+#else
+  return 0;   // no sub-second register in this HAL
+#endif
 }
 
 void rtcGetTime(struct gtm * t)
@@ -69,7 +73,8 @@ void rtcGetTime(struct gtm * t)
   rtcGetTimeMs(t);
 }
 
-#if defined(RTC_CALR_CALM) && !defined(BOOT)
+#if defined(RTC_CALIBRATION) && !defined(BOOT)
+#if defined(RTC_CALR_CALM)
 
 // DR0 is left alone, legacy code uses it for shutdown/soft reset requests
 #define RTC_CALIB_BKP_MAGIC_REG   RTC_BKP_DR1
@@ -124,7 +129,8 @@ gtime_t rtcGetCalibrationRef() { return 0; }
 void rtcSetCalibrationRef(gtime_t t) { (void)t; }
 void rtcClearCalibrationRef() {}
 
-#endif
+#endif // RTC_CALR_CALM
+#endif // RTC_CALIBRATION
 
 void rtcInit()
 {
